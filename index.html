@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FiniFi - PO Overview Dashboard</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #f8fafc;
+            color: #1e293b;
+        }
+        
+        .header {
+            background: white;
+            padding: 1rem 2rem;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: between;
+            align-items: center;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #3b82f6;
+        }
+        
+        .dashboard-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-left: 2rem;
+        }
+        
+        .container {
+            padding: 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .metric-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border-left: 4px solid #3b82f6;
+        }
+        
+        .metric-card.warning {
+            border-left-color: #f59e0b;
+        }
+        
+        .metric-card.success {
+            border-left-color: #10b981;
+        }
+        
+        .metric-card.danger {
+            border-left-color: #ef4444;
+        }
+        
+        .metric-value {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+        
+        .metric-label {
+            color: #64748b;
+            font-size: 0.875rem;
+            margin-bottom: 0.25rem;
+        }
+        
+        .metric-change {
+            font-size: 0.75rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            display: inline-block;
+        }
+        
+        .metric-change.positive {
+            background: #dcfce7;
+            color: #16a34a;
+        }
+        
+        .metric-change.negative {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+        
+        .charts-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+        
+        .chart-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        .chart-title {
+            font-size: 1.125rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: #1e293b;
+        }
+        
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+        
+        .status-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        
+        .status-item:last-child {
+            border-bottom: none;
+        }
+        
+        .status-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+        
+        .status-delivered {
+            background: #dcfce7;
+            color: #16a34a;
+        }
+        
+        .status-fulfilled {
+            background: #dbeafe;
+            color: #2563eb;
+        }
+        
+        .status-partial {
+            background: #fef3c7;
+            color: #d97706;
+        }
+        
+        .status-unmapped {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+        
+        .status-duplicate {
+            background: #fce7f3;
+            color: #be185d;
+        }
+        
+        .efficiency-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .efficiency-bar {
+            width: 100px;
+            height: 8px;
+            background: #e2e8f0;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        
+        .efficiency-fill {
+            height: 100%;
+            background: #3b82f6;
+            transition: width 0.3s ease;
+        }
+        
+        @media (max-width: 1024px) {
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+            
+            .metrics-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">
+            <div style="width: 24px; height: 24px; background: linear-gradient(45deg, #3b82f6, #1d4ed8); border-radius: 4px;"></div>
+            finifi
+        </div>
+        <div class="dashboard-title">PO Overview Dashboard</div>
+    </div>
+    
+    <div class="container">
+        <!-- Key Metrics -->
+        <div class="metrics-grid">
+            <div class="metric-card success">
+                <div class="metric-label">Total POs</div>
+                <div class="metric-value">1,247</div>
+                <span class="metric-change positive">+12% vs last month</span>
+            </div>
+            
+            <div class="metric-card success">
+                <div class="metric-label">Total PO Amount</div>
+                <div class="metric-value">₹2.4Cr</div>
+                <span class="metric-change positive">+8.3% vs last month</span>
+            </div>
+            
+            <div class="metric-card">
+                <div class="metric-label">Processing Efficiency</div>
+                <div class="metric-value">87.5%</div>
+                <span class="metric-change positive">+5.2% vs last month</span>
+            </div>
+            
+            <div class="metric-card warning">
+                <div class="metric-label">Expiring This Week</div>
+                <div class="metric-value">23</div>
+                <span class="metric-change negative">Requires attention</span>
+            </div>
+            
+            <div class="metric-card success">
+                <div class="metric-label">Average TAT (Days)</div>
+                <div class="metric-value">2.3</div>
+                <span class="metric-change positive">-0.7 days improved</span>
+            </div>
+            
+            <div class="metric-card danger">
+                <div class="metric-label">Price Mismatches</div>
+                <div class="metric-value">34</div>
+                <span class="metric-change negative">2.7% of total POs</span>
+            </div>
+        </div>
+        
+        <!-- Charts Section -->
+        <div class="charts-grid">
+            <div class="chart-card">
+                <div class="chart-title">PO Status Distribution</div>
+                <canvas id="statusChart" width="400" height="200"></canvas>
+            </div>
+            
+            <div class="chart-card">
+                <div class="chart-title">Daily PO Trend (Last 30 Days)</div>
+                <canvas id="trendChart" width="400" height="200"></canvas>
+            </div>
+        </div>
+        
+        <!-- Status Details -->
+        <div class="status-grid">
+            <div class="status-card">
+                <div class="chart-title">PO Status Breakdown</div>
+                <div class="status-item">
+                    <span>Delivered</span>
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <span class="status-badge status-delivered">742 POs</span>
+                        <span style="color: #64748b;">59.5%</span>
+                    </div>
+                </div>
+                <div class="status-item">
+                    <span>Fulfilled</span>
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <span class="status-badge status-fulfilled">298 POs</span>
+                        <span style="color: #64748b;">23.9%</span>
+                    </div>
+                </div>
+                <div class="status-item">
+                    <span>Partially Fulfilled</span>
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <span class="status-badge status-partial">127 POs</span>
+                        <span style="color: #64748b;">10.2%</span>
+                    </div>
+                </div>
+                <div class="status-item">
+                    <span>Unmapped</span>
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <span class="status-badge status-unmapped">58 POs</span>
+                        <span style="color: #64748b;">4.6%</span>
+                    </div>
+                </div>
+                <div class="status-item">
+                    <span>Duplicate</span>
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <span class="status-badge status-duplicate">22 POs</span>
+                        <span style="color: #64748b;">1.8%</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="status-card">
+                <div class="chart-title">State-wise Performance</div>
+                <div class="status-item">
+                    <span>Maharashtra</span>
+                    <div class="efficiency-indicator">
+                        <div class="efficiency-bar">
+                            <div class="efficiency-fill" style="width: 92%;"></div>
+                        </div>
+                        <span style="color: #64748b;">92%</span>
+                    </div>
+                </div>
+                <div class="status-item">
+                    <span>Karnataka</span>
+                    <div class="efficiency-indicator">
+                        <div class="efficiency-bar">
+                            <div class="efficiency-fill" style="width: 88%;"></div>
+                        </div>
+                        <span style="color: #64748b;">88%</span>
+                    </div>
+                </div>
+                <div class="status-item">
+                    <span>Tamil Nadu</span>
+                    <div class="efficiency-indicator">
+                        <div class="efficiency-bar">
+                            <div class="efficiency-fill" style="width: 85%;"></div>
+                        </div>
+                        <span style="color: #64748b;">85%</span>
+                    </div>
+                </div>
+                <div class="status-item">
+                    <span>Gujarat</span>
+                    <div class="efficiency-indicator">
+                        <div class="efficiency-bar">
+                            <div class="efficiency-fill" style="width: 83%;"></div>
+                        </div>
+                        <span style="color: #64748b;">83%</span>
+                    </div>
+                </div>
+                <div class="status-item">
+                    <span>Uttar Pradesh</span>
+                    <div class="efficiency-indicator">
+                        <div class="efficiency-bar">
+                            <div class="efficiency-fill" style="width: 79%;"></div>
+                        </div>
+                        <span style="color: #64748b;">79%</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="status-card">
+                <div class="chart-title">Mismatch Analysis</div>
+                <div class="status-item">
+                    <span>Price Mismatches</span>
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <span class="status-badge status-unmapped">34 POs</span>
+                        <span style="color: #64748b;">₹12.3L impact</span>
+                    </div>
+                </div>
+                <div class="status-item">
+                    <span>Tax Mismatches</span>
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <span class="status-badge status-unmapped">18 POs</span>
+                        <span style="color: #64748b;">₹2.8L impact</span>
+                    </div>
+                </div>
+                <div class="status-item">
+                    <span>Margin Mismatches</span>
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <span class="status-badge status-unmapped">12 POs</span>
+                        <span style="color: #64748b;">₹4.2L impact</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="status-card">
+                <div class="chart-title">Processing Today</div>
+                <div class="status-item">
+                    <span>POs Received Today</span>
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <span class="status-badge status-fulfilled">47 POs</span>
+                        <span style="color: #64748b;">₹18.2L</span>
+                    </div>
+                </div>
+                <div class="status-item">
+                    <span>POs Fulfilled Today</span>
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <span class="status-badge status-delivered">39 POs</span>
+                        <span style="color: #64748b;">₹14.8L</span>
+                    </div>
+                </div>
+                <div class="status-item">
+                    <span>Today's Efficiency</span>
+                    <div class="efficiency-indicator">
+                        <div class="efficiency-bar">
+                            <div class="efficiency-fill" style="width: 83%;"></div>
+                        </div>
+                        <span style="color: #64748b;">83%</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Status Chart
+        const statusCtx = document.getElementById('statusChart').getContext('2d');
+        new Chart(statusCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Delivered', 'Fulfilled', 'Partially Fulfilled', 'Unmapped', 'Duplicate'],
+                datasets: [{
+                    data: [742, 298, 127, 58, 22],
+                    backgroundColor: ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#ec4899'],
+                    borderWidth: 2,
+                    borderColor: '#ffffff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            padding: 20,
+                            usePointStyle: true
+                        }
+                    }
+                }
+            }
+        });
+        
+        // Trend Chart
+        const trendCtx = document.getElementById('trendChart').getContext('2d');
+        const last30Days = [];
+        const poData = [];
+        const fulfilledData = [];
+        
+        for (let i = 29; i >= 0; i--) {
+            const date = new Date();
+            date.setDate(date.getDate() - i);
+            last30Days.push(date.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' }));
+            poData.push(Math.floor(Math.random() * 30) + 25);
+            fulfilledData.push(Math.floor(Math.random() * 25) + 20);
+        }
+        
+        new Chart(trendCtx, {
+            type: 'line',
+            data: {
+                labels: last30Days,
+                datasets: [{
+                    label: 'POs Received',
+                    data: poData,
+                    borderColor: '#3b82f6',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    fill: true,
+                    tension: 0.4
+                }, {
+                    label: 'POs Fulfilled',
+                    data: fulfilledData,
+                    borderColor: '#10b981',
+                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top'
+                    }
+                },
+                scales: {
+                    x: {
+                        display: true,
+                        grid: {
+                            display: false
+                        }
+                    },
+                    y: {
+                        display: true,
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>
